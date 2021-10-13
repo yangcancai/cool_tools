@@ -219,7 +219,7 @@ get_date_short() ->
     to_date_short(TimeStamp).
 
 to_date_short(TimeStamp) when is_integer(TimeStamp) ->
-    to_date_short(timestamp_to_localtime(TimeStamp));
+    to_date_short(timestamp_to_localtime(to_second(TimeStamp)));
 to_date_short({Date, _}) ->
     to_date(Date, "~p~2..0B~2..0B").
 
@@ -228,7 +228,7 @@ get_date_long() ->
     to_date_long(TimeStamp).
 
 to_date_long(TimeStamp) when is_integer(TimeStamp) ->
-    to_date_long(timestamp_to_localtime(TimeStamp));
+    to_date_long(timestamp_to_localtime(to_second(TimeStamp)));
 to_date_long({Date, _}) ->
     to_date(Date, "~p-~2..0B-~2..0B").
 
@@ -243,14 +243,14 @@ get_time_long() ->
     to_time_long(timestamp()).
 
 to_time_short(TimeStamp) when is_integer(TimeStamp) ->
-    {Date, Time} = timestamp_to_localtime(TimeStamp),
+    {Date, Time} = timestamp_to_localtime(to_second(TimeStamp)),
     to_time_short({Date, Time});
 to_time_short({{Y, M, D}, {H, Min, S}}) ->
     lists:flatten(
         io_lib:format("~p~2..0B~2..0B~2..0B~2..0B~2..0B", [Y, M, D, H, Min, S])).
 
 to_time_long(TimeStamp) when is_integer(TimeStamp) ->
-    {Date, Time} = timestamp_to_localtime(TimeStamp),
+    {Date, Time} = timestamp_to_localtime(to_second(TimeStamp)),
     to_time_long({Date, Time});
 to_time_long({{Y, M, D}, {H, Min, S}}) ->
     lists:flatten(
