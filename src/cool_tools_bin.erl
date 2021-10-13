@@ -1073,4 +1073,4 @@ unhex(Char) ->
     badarg_with_info([<<Char:16>>]).
 
 badarg_with_info(Args) ->
-    erlang:error(badarg, Args, [{error_info, #{module => erl_cool_tools_bin_err}}]).
+    erlang:error({badarg, Args, [{error_info, #{module => erl_cool_tools_bin_err}}]}).
