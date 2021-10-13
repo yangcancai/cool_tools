@@ -6,7 +6,8 @@
   {applications,
    [kernel,
     stdlib,
-    exometer_core
+    exometer_core,
+    pa
    ]},
   {env,[]},
   {modules, []},
