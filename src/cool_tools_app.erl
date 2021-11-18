@@ -31,9 +31,11 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
+    cool_tools_logger:start(),
     cool_tools_sup:start_link().
 
 stop(_State) ->
+    cool_tools_logger:stop(),
     ok.
 
 %% internal functions
