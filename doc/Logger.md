@@ -1,4 +1,4 @@
-# Log
+# Logger
 
 To use logger in your module, include
 
