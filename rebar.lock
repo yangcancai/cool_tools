@@ -17,7 +17,15 @@
   {git,"https://github.com/manopapad/proper.git",
        {ref,"5f0d69c831b6c9f52535c3d1846efca480f6190d"}},
   1},
- {<<"setup">>,{pkg,<<"setup">>,<<"2.1.0">>},1}]}.
+ {<<"quickrand">>,
+  {git,"https://github.com/okeuday/quickrand.git",
+       {ref,"036f1a2037de541302438f7d0a31d5122aae98e2"}},
+  1},
+ {<<"setup">>,{pkg,<<"setup">>,<<"2.1.0">>},1},
+ {<<"uuid">>,
+  {git,"https://github.com/okeuday/uuid.git",
+       {ref,"8e8a34e52817ab9e2a9378cf3b8ddeeed7b3cbae"}},
+  0}]}.
 [
 {pkg_hash,[
  {<<"bear">>, <<"430419C1126B477686CDE843E88BA0F2C7DC5CDF0881C677500074F704339A99">>},

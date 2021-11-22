@@ -7,7 +7,10 @@
    [kernel,
     stdlib,
     exometer_core,
-    pa
+    pa,
+    uuid,
+    jiffy,
+    flatlog
    ]},
   {env,[]},
   {modules, []},
