@@ -114,7 +114,6 @@ loglevel_keyword_to_number(all)       -> 8.
 -spec start() -> ok.
 start() ->
     prepare_ets(),
-    set_global_loglevel(warning),
     ok.
 
 %% @doc Used after using the module, when we won't log deprecation
