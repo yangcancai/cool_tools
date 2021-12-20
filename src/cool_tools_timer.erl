@@ -108,10 +108,12 @@ init([]) ->
 handle_call({add, {Name, Callback, AfterInterval}},
             _From,
             State = #state{ref = undefined}) ->
-    do_add_timer(Name, Callback, AfterInterval),
+  do_remove_timer(Name),
+  do_add_timer(Name, Callback, AfterInterval),
     {reply, ok, State};
 handle_call({add, {Name, Callback, AfterInterval}}, _From, State = #state{ref = Ref}) ->
     erlang:cancel_timer(Ref),
+    do_remove_timer(Name),
     do_add_timer(Name, Callback, AfterInterval),
     NewS = do_go(State#state{ref = undefined, expired = 0}),
     {reply, ok, NewS};
