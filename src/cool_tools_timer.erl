@@ -36,7 +36,7 @@
          code_change/3]).
 
 -define(SERVER, ?MODULE).
-
+-type name() :: term().
 -type callback() :: {atom(), atom(), list()} | function() | {atom(), list()}.
 -type interval() ::
     hour | day | {once, pos_integer()} | {pos_integer(), pos_integer()} | pos_integer().
@@ -55,7 +55,7 @@ start_link() ->
 get_list() ->
     ets:tab2list(?MODULE).
 
--spec add(atom(), Callback :: callback(), interval()) -> ok.
+-spec add(name(), Callback :: callback(), interval()) -> ok.
 add(Name, Callback, {Min, Max} = AfterInterval)
     when is_integer(Min), is_integer(Max), Max > Min, Min >= 0 ->
     do_add(Name, Callback, AfterInterval);
