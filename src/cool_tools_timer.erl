@@ -37,7 +37,7 @@
 
 -define(SERVER, ?MODULE).
 -type name() :: term().
--type callback() :: {atom(), atom(), list()} | function() | {atom(), list()}.
+-type callback() :: {atom(), atom(), list()} | function() | {function(), list()}.
 -type interval() ::
     hour | day | {once, pos_integer()} | {pos_integer(), pos_integer()} | pos_integer().
 
