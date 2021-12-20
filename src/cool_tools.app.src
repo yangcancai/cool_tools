@@ -1,21 +1,11 @@
-{application, cool_tools,
+{application,
+ cool_tools,
  [{description, "An OTP application"},
   {vsn, {cmd, "cat VERSION"}},
   {registered, []},
   {mod, {cool_tools_app, []}},
-  {applications,
-   [kernel,
-    stdlib,
-    exometer_core,
-    pa,
-    uuid,
-    jiffy,
-    flatlog
-   ]},
-  {env,[]},
+  {applications, [kernel, stdlib, exometer_core, pa, uuid, jiffy, flatlog]},
+  {env, []},
   {modules, []},
-
   {licenses, ["Apache 2.0"]},
-  {links, []}
- ]}.
-
+  {links, []}]}.

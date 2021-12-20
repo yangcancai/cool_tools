@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author yangcancai 
+%%% @author yangcancai
 
 %%% Copyright (c) 2021 by yangcancai(yangcancai0112@gmail.com), All Rights Reserved.
 %%%
@@ -15,15 +15,18 @@
 %%% See the License for the specific language governing permissions and
 %%% limitations under the License.
 %%%
-   
+
 %%% @doc
 %%%
 %%% @end
 %%% Created : 2021-12-20T06:14:03+00:00
 %%%-------------------------------------------------------------------
 -module(cool_tools_timer).
+
 -author("yangcancai").
+
 -include("cool_tools_logger.hrl").
+
 -behaviour(gen_server).
 
 %% API
@@ -33,10 +36,11 @@
          code_change/3]).
 
 -define(SERVER, ?MODULE).
--type callback() :: {atom(), atom(), list()} |
-                  function() | {atom(), list()}.
--type interval() :: hour | day | {once, pos_integer()} |
-                   {pos_integer(), pos_integer()} | pos_integer().
+
+-type callback() :: {atom(), atom(), list()} | function() | {atom(), list()}.
+-type interval() ::
+    hour | day | {once, pos_integer()} | {pos_integer(), pos_integer()} | pos_integer().
+
 -record(state, {ref = undefined, expired = 0}).
 
 %%%===================================================================
@@ -50,14 +54,35 @@ start_link() ->
 
 get_list() ->
     ets:tab2list(?MODULE).
+
 -spec add(atom(), Callback :: callback(), interval()) -> ok.
-add(Name, Callback, AfterInterval) ->
+add(Name, Callback, {Min, Max} = AfterInterval)
+    when is_integer(Min), is_integer(Max), Max > Min, Min >= 0 ->
+    do_add(Name, Callback, AfterInterval);
+add(Name, Callback, AfterInterval) when AfterInterval == day; AfterInterval == hour ->
+    do_add(Name, Callback, AfterInterval);
+add(Name, Callback, {once, I} = AfterInterval) when is_integer(I), I >= 0 ->
+    do_add(Name, Callback, AfterInterval);
+add(Name, Callback, AfterInterval) when is_integer(AfterInterval), AfterInterval >= 0 ->
+    do_add(Name, Callback, AfterInterval).
+
+do_add(Name, {Mod, F, A} = Callback, AfterInterval)
+    when is_atom(Mod), is_atom(F), is_list(A) ->
+    do_add1(Name, Callback, AfterInterval);
+do_add(Name, {F, A} = Callback, AfterInterval) when is_function(F), is_list(A) ->
+    do_add1(Name, Callback, AfterInterval);
+do_add(Name, F = Callback, AfterInterval) when is_function(F) ->
+    do_add1(Name, Callback, AfterInterval).
+
+do_add1(Name, Callback, AfterInterval) ->
     gen_server:call(?MODULE, {add, {Name, Callback, AfterInterval}}).
+
 remove(Name) ->
-    gen_server:call(?MODULE, {remove, Name}).
-%%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
+    gen_server:call(?MODULE,
+                    {remove,
+                     Name}).%%%===================================================================
+                            %%% gen_server callbacks
+                            %%%===================================================================
 
 %% @private
 %% @doc Initializes the server
@@ -73,38 +98,26 @@ init([]) ->
 
 %% @private
 %% @doc Handling call messages
--spec handle_call(Request :: term(),
-                  From :: {pid(), Tag :: term()},
-                  State :: #state{}) ->
+-spec handle_call(Request :: term(), From :: {pid(), Tag :: term()}, State :: #state{}) ->
                      {reply, Reply :: term(), NewState :: #state{}} |
-                     {reply,
-                      Reply :: term(),
-                      NewState :: #state{},
-                      timeout() | hibernate} |
+                     {reply, Reply :: term(), NewState :: #state{}, timeout() | hibernate} |
                      {noreply, NewState :: #state{}} |
                      {noreply, NewState :: #state{}, timeout() | hibernate} |
-                     {stop,
-                      Reason :: term(),
-                      Reply :: term(),
-                      NewState :: #state{}} |
+                     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
                      {stop, Reason :: term(), NewState :: #state{}}.
 handle_call({add, {Name, Callback, AfterInterval}},
             _From,
             State = #state{ref = undefined}) ->
     do_add_timer(Name, Callback, AfterInterval),
     {reply, ok, State};
-handle_call({add, {Name, Callback, AfterInterval}},
-            _From,
-            State = #state{ref = Ref}) ->
+handle_call({add, {Name, Callback, AfterInterval}}, _From, State = #state{ref = Ref}) ->
     erlang:cancel_timer(Ref),
     do_add_timer(Name, Callback, AfterInterval),
     NewS = do_go(State#state{ref = undefined, expired = 0}),
     {reply, ok, NewS};
-handle_call({remove, Name},
-    _From,
-    State = #state{ref = undefined}) ->
-  do_remove_timer(Name),
-  {reply, ok, State};
+handle_call({remove, Name}, _From, State = #state{ref = undefined}) ->
+    do_remove_timer(Name),
+    {reply, ok, State};
 handle_call({remove, Name}, _, State = #state{ref = Ref}) ->
     erlang:cancel_timer(Ref),
     do_remove_timer(Name),
@@ -168,11 +181,16 @@ do_add_timer(Name, Callback, AfterInterval) ->
                     Callback,
                     AfterInterval}),
     ok.
+
 do_remove_timer(Name) ->
-    M = ets:fun2ms(fun({{_, Name1}, _, _}) when Name == Name1-> true;
-      (_) -> false end),
+    M = ets:fun2ms(fun ({{_, Name1}, _, _}) when Name == Name1 ->
+                           true;
+                       (_) ->
+                           false
+                   end),
     ets:select_delete(?MODULE, M),
     ok.
+
 pre_interval({S, E}) when is_integer(S), is_integer(E) ->
     S + rand:uniform(E - S + 1) - 1;
 pre_interval(hour) ->
@@ -180,7 +198,7 @@ pre_interval(hour) ->
 pre_interval(day) ->
     cool_tools:diff_next_daytime(0, 0) * 1000;
 pre_interval({once, I}) ->
-  I;
+    I;
 pre_interval(I) ->
     I.
 
@@ -192,10 +210,10 @@ do_run_task({ExpiredTime, Name}, Callback, AfterInterval) ->
     spawn(fun() -> do_pre_apply(Callback) end),
     do_del_timer({ExpiredTime, Name}),
     case AfterInterval of
-      {once, _} ->
-        ok;
-       _->
-         do_add_timer(Name, Callback, AfterInterval)
+        {once, _} ->
+            ok;
+        _ ->
+            do_add_timer(Name, Callback, AfterInterval)
     end.
 
 do_pre_apply(Callback) ->
@@ -218,8 +236,8 @@ do_apply(Fun) when is_function(Fun) ->
 do_go(State) ->
     case ets:first(?MODULE) of
         '$end_of_table' ->
-            erlang:send_after(1, self(), go),
-            State;
+            erlang:send_after(1000, self(), go),
+            State#state{ref = undefined, expired = 0};
         {ExpiredTime, _Name} = Key ->
             [{_, Callback, AfterInterval}] = ets:lookup(?MODULE, Key),
             case ExpiredTime - erlang:system_time(1000) of

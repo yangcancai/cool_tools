@@ -15,7 +15,7 @@
 %%% See the License for the specific language governing permissions and
 %%% limitations under the License.
 %%%
-   
+
 %%% @doc
 %%%
 %%% @end
@@ -30,39 +30,53 @@
 
 -spec format(logger:log_event(), logger:formatter_config()) -> unicode:chardata().
 format(Event, FConfig) ->
-    try do_format(Event, FConfig)
+    try
+        do_format(Event, FConfig)
     catch
         %% Errors during log formatting can lead to a death spiral of recursive error logging, so
         %% format the formatter error in a safe way and don't allow the exception to propagate.
-        error:Reason:Stacktrace -> format_log_formatter_error(error, Reason, Stacktrace, Event, FConfig)
+        error:Reason:Stacktrace ->
+            format_log_formatter_error(error, Reason, Stacktrace, Event, FConfig)
     end.
 
-format_log_formatter_error(Class, Reason, Stacktrace, #{meta := #{time := Time}} = Event, FConfig) ->
-    IoData = jiffy:encode(
-        #{
-            'when' => format_time(Time),
-            level => error,
-            what => log_format_failed,
-            class => Class,
-            reason => Reason,
-            stacktrace => format_item(Stacktrace, FConfig),
-            formatter_module => ?MODULE,
-            original_event => unicode:characters_to_binary(io_lib:format("~0p", [Event]))
-        }
-    ),
+format_log_formatter_error(Class,
+                           Reason,
+                           Stacktrace,
+                           #{meta := #{time := Time}} = Event,
+                           FConfig) ->
+    IoData =
+        jiffy:encode(#{'when' => format_time(Time),
+                       level => error,
+                       what => log_format_failed,
+                       class => Class,
+                       reason => Reason,
+                       stacktrace => format_item(Stacktrace, FConfig),
+                       formatter_module => ?MODULE,
+                       original_event =>
+                           unicode:characters_to_binary(
+                               io_lib:format("~0p", [Event]))}),
     [IoData, <<"\n">>].
 
-
 -spec do_format(logger:log_event(), logger:formatter_config()) -> unicode:chardata().
-do_format(E = #{msg := {report, #{label := {error_logger, _}, format := Format, args := Terms}}}, FConfig) ->
-    do_format(E#{msg := {report,
+do_format(E = #{msg :=
+                    {report,
+                     #{label := {error_logger, _},
+                       format := Format,
+                       args := Terms}}},
+          FConfig) ->
+    do_format(E#{msg :=
+                     {report,
                       #{unstructured_log =>
-                        unicode:characters_to_binary(io_lib:format(Format, Terms))}}},
-           FConfig);
+                            unicode:characters_to_binary(
+                                io_lib:format(Format, Terms))}}},
+              FConfig);
 do_format(E = #{msg := {string, String}}, FConfig) ->
-    do_format(E#{msg := {report,
+    do_format(E#{msg :=
+                     {report,
                       #{unstructured_log =>
-                        unicode:characters_to_binary(io_lib:format(String, []))}}}, FConfig);
+                            unicode:characters_to_binary(
+                                io_lib:format(String, []))}}},
+              FConfig);
 do_format(E = #{msg := {report, Report}}, FConfig) when is_map(Report) ->
     NewMap = process_metadata(E),
     NewReport = maps:merge(Report, NewMap),
@@ -71,17 +85,18 @@ do_format(E = #{msg := {report, Report}}, FConfig) when is_map(Report) ->
     IoData = jiffy:encode(Formatted),
     [IoData, <<"\n">>];
 do_format(Map = #{msg := {Format, Terms}}, FConfig) ->
-    do_format(Map#{msg := {report,
+    do_format(Map#{msg :=
+                       {report,
                         #{unstructured_log =>
-                          unicode:characters_to_binary(io_lib:format(Format, Terms))}}},
-           FConfig).
-
+                              unicode:characters_to_binary(
+                                  io_lib:format(Format, Terms))}}},
+              FConfig).
 
 format_item(_Item, _FConfig = #{depth := 0}) ->
     <<"...">>;
 format_item(Item, FConfig = #{depth := D}) when is_map(Item) ->
-    ML = [{all_to_binary(Key, FConfig),
-           format_item(Val, FConfig#{depth := D - 1})} || {Key, Val} <- maps:to_list(Item)],
+    ML = [{all_to_binary(Key, FConfig), format_item(Val, FConfig#{depth := D - 1})}
+          || {Key, Val} <- maps:to_list(Item)],
     maps:from_list(ML);
 format_item(Item, FConfig = #{depth := Depth}) when is_list(Item) ->
     case io_lib:printable_unicode_list(Item) of
@@ -104,9 +119,12 @@ all_to_binary(Full, FConfig) when is_binary(Full) ->
     ShortUnicode = unicode:characters_to_binary(Short, utf8, utf8),
     FullUnicode = unicode:characters_to_binary(Short, utf8, utf8),
     case {ShortUnicode, FullUnicode} of
-        {<<_/binary>>, <<_/binary>>} -> ShortUnicode;
-        {{incomplete,Incomplete,_}, <<_/binary>>} -> Incomplete;
-        _ -> format_non_unicode(Full, FConfig)
+        {<<_/binary>>, <<_/binary>>} ->
+            ShortUnicode;
+        {{incomplete, Incomplete, _}, <<_/binary>>} ->
+            Incomplete;
+        _ ->
+            format_non_unicode(Full, FConfig)
     end;
 all_to_binary(Something, FConfig) ->
     format_non_unicode(Something, FConfig).
@@ -120,8 +138,10 @@ shorten_binary(S, #{format_chars_limit := unlimited}) ->
 shorten_binary(S, #{format_chars_limit := L}) ->
     binary_part(S, 0, min(size(S), L)).
 
-format_chars_limit_to_opts(unlimited) -> [];
-format_chars_limit_to_opts(CharsLimit) -> [{chars_limit, CharsLimit}].
+format_chars_limit_to_opts(unlimited) ->
+    [];
+format_chars_limit_to_opts(CharsLimit) ->
+    [{chars_limit, CharsLimit}].
 
 format_str(S, FConfig) when is_list(S) ->
     case io_lib:printable_unicode_list(S) of
@@ -155,5 +175,4 @@ config_correct_depth(C) ->
 default_config() ->
     #{format_chars_limit => unlimited,
       format_depth => unlimited,
-      depth => -1
-    }.
+      depth => -1}.

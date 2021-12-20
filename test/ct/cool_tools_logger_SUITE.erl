@@ -15,7 +15,7 @@
 %%% See the License for the specific language governing permissions and
 %%% limitations under the License.
 %%%
-   
+
 %%% @doc
 %%%
 %%% @end
@@ -29,7 +29,8 @@
 
 -compile(export_all).
 
--define(APP, 'cool_tools').
+-define(APP, cool_tools).
+
 all() ->
     [log].
 
@@ -63,7 +64,7 @@ del_meck() ->
 
 log(_) ->
     ?ERROR_MSG(#{txt => <<"I'am kkkk">>}),
-    ?ERROR_MSG(#{term => {<<"I'am kkkk">>, a, #{b=>1}}}),
-    ?ERROR_MSG_IF(true,#{txt => <<"I'am error">>}),
+    ?ERROR_MSG(#{term => {<<"I'am kkkk">>, a, #{b => 1}}}),
+    ?ERROR_MSG_IF(true, #{txt => <<"I'am error">>}),
     ?TRY_CATCH(throw(11), <<"SUITE">>),
     ok.

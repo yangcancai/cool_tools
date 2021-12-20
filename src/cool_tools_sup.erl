@@ -15,7 +15,7 @@
 %%% See the License for the specific language governing permissions and
 %%% limitations under the License.
 %%%
-   
+
 %%% @doc
 %%%
 %%% @end
@@ -29,7 +29,6 @@
 -behaviour(supervisor).
 
 -export([start_link/0]).
-
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
@@ -48,17 +47,16 @@ start_link() ->
 %%                  modules => modules()}   % optional
 init([]) ->
     SupFlags =
-    #{strategy => one_for_one,
-      intensity => 10,
-      period => 10},
-ChildSpecs =
-    [#{id => cool_tools_timer,
-       start => {cool_tools_timer, start_link, []},
-       restart => permanent,
-       shutdown => 3000,
-       type => worker,
-       modules => [cool_tools_timer]}],
-{ok, {SupFlags, ChildSpecs}}.
-
+        #{strategy => one_for_one,
+          intensity => 10,
+          period => 10},
+    ChildSpecs =
+        [#{id => cool_tools_timer,
+           start => {cool_tools_timer, start_link, []},
+           restart => permanent,
+           shutdown => 3000,
+           type => worker,
+           modules => [cool_tools_timer]}],
+    {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions

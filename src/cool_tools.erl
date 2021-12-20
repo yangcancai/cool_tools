@@ -101,7 +101,7 @@
 -export([for/3]).
 -export([if_/3]).
 -export([pmap/2]).
-%%% uuid 
+%%% uuid
 %%% %% ==========================================
 -export([uuid_v1/0]).
 -export([uuid_v1_string/0]).
@@ -113,7 +113,6 @@
 %% ================================================
 -export([list_join/2]).
 -export([to_upper/1, encode_login_password/2]).
-
 
 to_binary(V) when is_integer(V) ->
     erlang:integer_to_binary(V);
@@ -195,8 +194,9 @@ localtime_to_timestamp({D, T}) ->
             %% 当前时间到0年1月1号0点0分0秒的秒数
             SrcSeconds = calendar:datetime_to_gregorian_seconds({D, T}),
             %% 世界时间到0年1月1号0点0分0秒的秒数
-            SrcSeconds - TimeZoneInt * 3600 -
-                calendar:datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})
+            SrcSeconds
+            - TimeZoneInt * 3600
+            - calendar:datetime_to_gregorian_seconds({{1970, 1, 1}, {0, 0, 0}})
     end.
 
 -spec timestamp_to_localtime(TimeStamp :: integer()) -> calendar:datetime().
@@ -319,8 +319,8 @@ diff_day(TimeStamp1, TimeStamp2)
     {Date2, _} = timestamp_to_localtime(TimeStamp2),
     diff_day(Date1, Date2);
 diff_day(Date1, Date2) ->
-    erlang:abs(calendar:date_to_gregorian_days(Date1) -
-                   calendar:date_to_gregorian_days(Date2)).
+    erlang:abs(calendar:date_to_gregorian_days(Date1)
+               - calendar:date_to_gregorian_days(Date2)).
 
 get_pre_date_short(LastDayNum) ->
     get_pre_date_short(timestamp(), LastDayNum).
@@ -569,11 +569,11 @@ do_f(Parent, F, I) ->
 -spec uuid_v1() -> binary().
 uuid_v1() ->
     S1 = case get({?MODULE, uuid_v1}) of
-        undefined -> 
-            uuid:new(self());
-        S ->
-            S
-    end,
+             undefined ->
+                 uuid:new(self());
+             S ->
+                 S
+         end,
     {UUID, NewS} = uuid:get_v1(S1),
     put({?MODULE, uuid_v1}, NewS),
     UUID.
@@ -581,6 +581,7 @@ uuid_v1() ->
 -spec uuid_v1_string() -> list().
 uuid_v1_string() ->
     uuid_to_string(uuid_v1()).
+
 uuid_v1_int() ->
     uuid_to_int(uuid_v1()).
 
@@ -588,16 +589,18 @@ uuid_v4() ->
     uuid:get_v4().
 
 uuid_v4_int() ->
-     uuid_to_int(uuid_v4()).
+    uuid_to_int(uuid_v4()).
 
 uuid_v4_string() ->
-     uuid_to_string(uuid_v4()).
+    uuid_to_string(uuid_v4()).
 
 uuid_to_int(U) when is_binary(U) ->
-    <<Rs: 128/unsigned-integer>> = U,
+    <<Rs:128/unsigned-integer>> = U,
     Rs.
+
 uuid_to_string(U) ->
     uuid:uuid_to_string(U, nodash).
+
 %% other
 %% ====================================
 -spec list_join(L :: list(), Join :: term()) -> list().

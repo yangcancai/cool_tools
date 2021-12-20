@@ -4,7 +4,9 @@
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
+
 -include("cool_tools_logger.hrl").
+
 -define(log(F, P),
         ct:print("pid = ~p, mod:~p fun:~p ~s ~p ", [self(), ?MODULE, ?FUNCTION_NAME, F, P])).
 -define(log(P), ?log("", P)).
