@@ -105,10 +105,14 @@
 %%% %% ==========================================
 -export([uuid_v1/0]).
 -export([uuid_v1_string/0]).
+-export([uuid_v1_string/1]).
 -export([uuid_v1_int/0]).
 -export([uuid_v4/0]).
 -export([uuid_v4_string/0]).
+-export([uuid_v4_string/1]).
 -export([uuid_v4_int/0]).
+-export([uuid_to_string/2]).
+-export([uuid_to_string/1]).
 %% other
 %% ================================================
 -export([list_join/2]).
@@ -582,6 +586,9 @@ uuid_v1() ->
 uuid_v1_string() ->
     uuid_to_string(uuid_v1()).
 
+uuid_v1_string(standard) ->
+    uuid_to_string(uuid_v1(), standard).
+
 uuid_v1_int() ->
     uuid_to_int(uuid_v1()).
 
@@ -594,12 +601,18 @@ uuid_v4_int() ->
 uuid_v4_string() ->
     uuid_to_string(uuid_v4()).
 
+uuid_v4_string(standard) ->
+    uuid_to_string(uuid_v4(), standard).
+
 uuid_to_int(U) when is_binary(U) ->
     <<Rs:128/unsigned-integer>> = U,
     Rs.
 
 uuid_to_string(U) ->
     uuid:uuid_to_string(U, nodash).
+
+uuid_to_string(U, standard) ->
+    uuid:uuid_to_string(U, standard).
 
 %% other
 %% ====================================
