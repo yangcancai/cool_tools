@@ -249,7 +249,7 @@ do_go(State) ->
                                             {run_task, Key, Callback, AfterInterval}),
                     State#state{ref = Ref, expired = AfterInterval};
                 _ ->
-                    Ref = erlang:send(self(), {run_task, Key, Callback, AfterInterval}),
-                    State#state{ref = Ref}
+                    erlang:send(self(), {run_task, Key, Callback, AfterInterval}),
+                    State#state{ref = undefined}
             end
     end.
