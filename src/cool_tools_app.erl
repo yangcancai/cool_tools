@@ -31,8 +31,11 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
+    cool_tools_timer:start(),
     cool_tools_logger:start(),
-    cool_tools_sup:start_link().
+    {ok, R} = cool_tools_sup:start_link(),
+    [cool_tools_timer:add(N,fun() -> N end,10000) || N <- lists:seq(1,10)],
+    {ok, R}.
 
 stop(_State) ->
     cool_tools_logger:stop(),

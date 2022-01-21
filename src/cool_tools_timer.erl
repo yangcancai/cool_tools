@@ -30,7 +30,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, add/3, remove/1, get_list/0]).
+-export([start/0,start_link/0, add/3, remove/1, get_list/0, i/0, stop/0]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
@@ -46,15 +46,19 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
+start() ->
+    ?MODULE = ets:new(?MODULE, [named_table, ordered_set, public]),
+    ok.
 %% @doc Spawns the server and registers the local name (unique)
 -spec start_link() -> {ok, Pid :: pid()} | ignore | {error, Reason :: term()}.
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-
+stop() ->
+    gen_server:call(?MODULE, stop).
 get_list() ->
     ets:tab2list(?MODULE).
-
+i() ->
+    gen_server:call(?MODULE, i).
 -spec add(name(), Callback :: callback(), interval()) -> ok.
 add(Name, Callback, {Min, Max} = AfterInterval)
     when is_integer(Min), is_integer(Max), Max > Min, Min >= 0 ->
@@ -92,7 +96,6 @@ remove(Name) ->
               {stop, Reason :: term()} |
               ignore.
 init([]) ->
-    ?MODULE = ets:new(?MODULE, [named_table, ordered_set, public]),
     erlang:send(self(), go),
     {ok, #state{}}.
 
@@ -105,26 +108,19 @@ init([]) ->
                      {noreply, NewState :: #state{}, timeout() | hibernate} |
                      {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
                      {stop, Reason :: term(), NewState :: #state{}}.
-handle_call({add, {Name, Callback, AfterInterval}},
-            _From,
-            State = #state{ref = undefined}) ->
-  do_remove_timer(Name),
-  do_add_timer(Name, Callback, AfterInterval),
-    {reply, ok, State};
-handle_call({add, {Name, Callback, AfterInterval}}, _From, State = #state{ref = Ref}) ->
-    erlang:cancel_timer(Ref),
+handle_call({add, {Name, Callback, AfterInterval}}, _From, State) ->
     do_remove_timer(Name),
     do_add_timer(Name, Callback, AfterInterval),
-    NewS = do_go(State#state{ref = undefined, expired = 0}),
+    NewS = do_go(State),
     {reply, ok, NewS};
-handle_call({remove, Name}, _From, State = #state{ref = undefined}) ->
+handle_call({remove, Name}, _, State = #state{}) ->
     do_remove_timer(Name),
-    {reply, ok, State};
-handle_call({remove, Name}, _, State = #state{ref = Ref}) ->
-    erlang:cancel_timer(Ref),
-    do_remove_timer(Name),
-    NewS = do_go(State#state{ref = undefined, expired = 0}),
+    NewS = do_go(State),
     {reply, ok, NewS};
+handle_call(i, _From, State) ->
+    {reply, State, State};
+handle_call(stop, _From, State) ->
+    {stop, normal, ok, State};
 handle_call(_Request, _From, State = #state{}) ->
     {reply, ok, State}.
 
@@ -143,12 +139,11 @@ handle_cast(_Request, State = #state{}) ->
                      {noreply, NewState :: #state{}} |
                      {noreply, NewState :: #state{}, timeout() | hibernate} |
                      {stop, Reason :: term(), NewState :: #state{}}.
-handle_info(go, State) ->
+handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval}, State) ->
+    do_run_task({ExpiredTime, Name}, Callback, AfterInterval),
     NewState = do_go(State),
     {noreply, NewState};
-handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval}, State) ->
-    error_logger:info_msg("Run task: ~p", [{cool_tools:to_time_long(ExpiredTime), Name, AfterInterval}]),
-    do_run_task({ExpiredTime, Name}, Callback, AfterInterval),
+handle_info(go, State) ->
     NewState = do_go(State),
     {noreply, NewState};
 handle_info(_Info, State = #state{}) ->
@@ -162,7 +157,9 @@ handle_info(_Info, State = #state{}) ->
 -spec terminate(Reason :: normal | shutdown | {shutdown, term()} | term(),
                 State :: #state{}) ->
                    term().
-terminate(_Reason, _State = #state{}) ->
+terminate(Reason, State = #state{ref = Ref}) ->
+    cancel_timer(Ref),
+    ?LOG_ERROR("Timer terminate, reason= ~p, state = ~p", [Reason, State]),
     ok.
 
 %% @private
@@ -179,8 +176,6 @@ code_change(_OldVsn, State = #state{}, _Extra) ->
 %%%===================================================================
 do_add_timer(Name, Callback, AfterInterval) ->
    Expired = erlang:system_time(1000) + pre_interval(AfterInterval),
-   error_logger:info_msg("Do add timer: key = ~p, afterinterval = ~p",[{cool_tools:to_time_long(Expired), Name},
-     AfterInterval]),
     true =
         ets:insert(?MODULE,
                    {{Expired, Name},
@@ -209,7 +204,6 @@ pre_interval(I) ->
     I.
 
 do_del_timer({ExpiredTime, Name}) ->
-  error_logger:info_msg("Do del timer: ~p",[{cool_tools:to_time_long(ExpiredTime), Name}]),
   true = ets:delete(?MODULE, {ExpiredTime, Name}),
     ok.
 
@@ -240,19 +234,15 @@ do_apply({Fun, A}) when is_function(Fun) ->
 do_apply(Fun) when is_function(Fun) ->
     Fun().
 
-do_go(State) ->
+do_go(State = #state{ref = OldRef}) ->
+    %% cancel old timer
+     cancel_timer(OldRef),
     case ets:first(?MODULE) of
         '$end_of_table' ->
-            erlang:send_after(1000, self(), go),
-          error_logger:info_msg("Do go : $end_of_table state=~p",[State]),
             State#state{ref = undefined, expired = 0};
         {ExpiredTime, _Name} = Key ->
-            [{_, Callback, AfterInterval} = Who] = ets:lookup(?MODULE, Key),
+            [{_, Callback, AfterInterval} = _Who] = ets:lookup(?MODULE, Key),
           Now = erlang:system_time(1000),
-          error_logger:info_msg("Do go : who=~p, state=~p, after=~p, expiredtime=~p, now= ~p",[Who,State, ExpiredTime -
-          Now,
-            cool_tools:to_time_long(ExpiredTime),
-            cool_tools:to_time_long(Now)]),
             case ExpiredTime -  Now of
                 After when After > 0 ->
                     Ref = erlang:send_after(After,
@@ -264,3 +254,8 @@ do_go(State) ->
                     NewS
             end
     end.
+cancel_timer(OldRef) when is_reference(OldRef)->
+    erlang:cancel_timer(OldRef),
+    ok;
+cancel_timer(_) ->
+    ok.
