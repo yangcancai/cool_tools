@@ -147,6 +147,7 @@ handle_info(go, State) ->
     NewState = do_go(State),
     {noreply, NewState};
 handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval}, State) ->
+    error_logger:info_msg("Run task: ~p", [{cool_tools:to_time_long(ExpiredTime), Name, AfterInterval}]),
     do_run_task({ExpiredTime, Name}, Callback, AfterInterval),
     NewState = do_go(State),
     {noreply, NewState};
@@ -177,9 +178,12 @@ code_change(_OldVsn, State = #state{}, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 do_add_timer(Name, Callback, AfterInterval) ->
+   Expired = erlang:system_time(1000) + pre_interval(AfterInterval),
+   error_logger:info_msg("Do add timer: key = ~p, afterinterval = ~p",[{cool_tools:to_time_long(Expired), Name},
+     AfterInterval]),
     true =
         ets:insert(?MODULE,
-                   {{erlang:system_time(1000) + pre_interval(AfterInterval), Name},
+                   {{Expired, Name},
                     Callback,
                     AfterInterval}),
     ok.
@@ -205,7 +209,8 @@ pre_interval(I) ->
     I.
 
 do_del_timer({ExpiredTime, Name}) ->
-    true = ets:delete(?MODULE, {ExpiredTime, Name}),
+  error_logger:info_msg("Do del timer: ~p",[{cool_tools:to_time_long(ExpiredTime), Name}]),
+  true = ets:delete(?MODULE, {ExpiredTime, Name}),
     ok.
 
 do_run_task({ExpiredTime, Name}, Callback, AfterInterval) ->
@@ -239,17 +244,23 @@ do_go(State) ->
     case ets:first(?MODULE) of
         '$end_of_table' ->
             erlang:send_after(1000, self(), go),
+          error_logger:info_msg("Do go : $end_of_table state=~p",[State]),
             State#state{ref = undefined, expired = 0};
         {ExpiredTime, _Name} = Key ->
-            [{_, Callback, AfterInterval}] = ets:lookup(?MODULE, Key),
-            case ExpiredTime - erlang:system_time(1000) of
+            [{_, Callback, AfterInterval} = Who] = ets:lookup(?MODULE, Key),
+          Now = erlang:system_time(1000),
+          error_logger:info_msg("Do go : who=~p, state=~p, after=~p, expiredtime=~p, now= ~p",[Who,State, ExpiredTime -
+          Now,
+            cool_tools:to_time_long(ExpiredTime),
+            cool_tools:to_time_long(Now)]),
+            case ExpiredTime -  Now of
                 After when After > 0 ->
                     Ref = erlang:send_after(After,
                                             self(),
                                             {run_task, Key, Callback, AfterInterval}),
                     State#state{ref = Ref, expired = AfterInterval};
                 _ ->
-                    erlang:send(self(), {run_task, Key, Callback, AfterInterval}),
-                    State#state{ref = undefined}
+                    {noreply, NewS} = handle_info({run_task, Key, Callback, AfterInterval}, State),
+                    NewS
             end
     end.
