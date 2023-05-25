@@ -67,4 +67,8 @@ log(_) ->
     ?ERROR_MSG(#{term => {<<"I'am kkkk">>, a, #{b => 1}}}),
     ?ERROR_MSG_IF(true, #{txt => <<"I'am error">>}),
     ?TRY_CATCH(throw(11), <<"SUITE">>),
+    ?LOG_INFO("~p ~ts", [a, <<"你好"/utf8>>]),
+    ?LOG_INFO(#{action => why, error => [{a, b}], <<"kkk">> => <<"hhle">>,
+         d => <<1,2,3,4>>,
+        'yes' => 0, t => <<"你好"/utf8>>}),
     ok.

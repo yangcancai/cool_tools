@@ -44,6 +44,7 @@ format_log_formatter_error(Class,
                            Stacktrace,
                            #{meta := #{time := Time}} = Event,
                            FConfig) ->
+    Meta = process_metadata(Event),
     IoData =
         jiffy:encode(#{'when' => format_time(Time),
                        level => error,
@@ -54,7 +55,7 @@ format_log_formatter_error(Class,
                        formatter_module => ?MODULE,
                        original_event =>
                            unicode:characters_to_binary(
-                               io_lib:format("~0p", [Event]))}),
+                               io_lib:format("~0p", [Event#{meta => Meta}]))}),
     [IoData, <<"\n">>].
 
 -spec do_format(logger:log_event(), logger:formatter_config()) -> unicode:chardata().
@@ -161,11 +162,15 @@ do_format_str(S, #{format_depth := unlimited, format_chars_limit := L}) ->
 do_format_str(S, #{format_depth := D, format_chars_limit := L}) ->
     io_lib:format("~0tP", [S, D], format_chars_limit_to_opts(L)).
 
-process_metadata(#{meta := #{time := T} = M, level := L}) ->
-    DiscardKeys = [time, gl, report_cb],
+process_metadata(#{meta := #{time := T, mfa := {M, F, _}, pid := Pid, line := Line}, level := L}) ->
     #{level => L,
       'when' => format_time(T),
-      meta => maps:without(DiscardKeys, M)}.
+      mfa => erlang:list_to_binary(io_lib:format("~p:~p(~p)", [M, F, Line])), pid => Pid};
+process_metadata(#{meta := #{time := T, pid := Pid}, level := L}) ->
+    #{level => L,
+      'when' => format_time(T),
+      pid => Pid}.
+
 
 config_correct_depth(C = #{depth := unlimited}) ->
     C#{depth := -1};
