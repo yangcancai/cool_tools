@@ -25,4 +25,4 @@
 
 -author("yangcancai").
 
--compile({parse_transform, pa_pt}).
+-compile({parse_transform, cool_tools_pa_pt}).
