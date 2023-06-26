@@ -36,9 +36,14 @@ all() ->
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(?APP),
+    cool_tools_logger:start_default_log(root_path()++"/log", true),
     cool_tools_logger:set_global_loglevel(all),
     new_meck(),
     Config.
+root_path() ->
+    Path = code:priv_dir(cool_tools),
+    [Root, _] = string:split(Path, "_build/test/lib/cool_tools/priv"),
+    Root.
 
 end_per_suite(Config) ->
     del_meck(),
@@ -63,11 +68,14 @@ del_meck() ->
     meck:unload().
 
 log(_) ->
-    ?ERROR_MSG(#{txt => <<"I'am kkkk">>}),
+    ?ERROR_MSG(#{txt => <<"I'am kkkk">>, id => 1}),
     ?ERROR_MSG(#{term => {<<"I'am kkkk">>, a, #{b => 1}}}),
     ?ERROR_MSG_IF(true, #{txt => <<"I'am error">>}),
     ?TRY_CATCH(throw(11), <<"SUITE">>),
     ?LOG_INFO("~p ~ts", [a, <<"你好"/utf8>>]),
+    ?LOG_DEBUG(#{action => why, error => [{a, b}], <<"kkk">> => <<"hhle">>,
+         d => <<1,2,3,4>>,
+        'yes' => 0, t => <<"你好"/utf8>>}),
     ?LOG_INFO(#{action => why, error => [{a, b}], <<"kkk">> => <<"hhle">>,
          d => <<1,2,3,4>>,
         'yes' => 0, t => <<"你好"/utf8>>}),

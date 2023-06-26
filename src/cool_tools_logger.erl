@@ -38,6 +38,7 @@
          format_stacktrace_filter/2]).
 %% Test API
 -export([log_with_lvl/2]).
+-export([start_default_log/0, start_default_log/1, start_default_log/2, start_default_log/3]).
 
 -define(DEPRECATION_TAB, cool_tools_deprecations).         % ETS table name
 -define(DEFAULT_COOLDOWN_HOURS, 6).             % default cooldown time
@@ -49,6 +50,64 @@
 -type atom_log_level() :: none | logger:level() | all.
 -type int_log_level() :: -1..8.
 -type level() :: atom_log_level() | int_log_level().
+start_default_log() ->
+    start_default_log(false).
+start_default_log(Debug) ->
+    start_default_log("./log", Debug).
+start_default_log(LogDir, Debug) ->
+    start_default_log(undefined, LogDir, Debug).
+start_default_log(App, LogDir, Debug) ->
+    filelib:ensure_dir(LogDir ++ "/"),
+    LoggerFormatterConsole = #{
+        legacy_header => false,
+        single_line => true,
+        chars_limit => 16256,
+        max_size => 8128,
+        depth => 256,
+        template => [time," [",level,"] ", pid, " ",mfa,":",line," ",msg,"\n"]
+    },
+    logger:set_handler_config(default, formatter, {logger_formatter, LoggerFormatterConsole}),
+    logger:set_handler_config(default, level, error),
+    %% Configure logging to the logfile.
+    LoggerConfigDisk = #{
+        file => lists:flatten(filename:join(LogDir, atom_to_list(node()))),
+        type => wrap,
+        max_no_files => 10,
+        max_no_bytes => 51418800 % 10 x 5MB
+    },
+    logger:add_handler(disk_log, logger_disk_log_h,
+        #{ config => LoggerConfigDisk, level => info }),
+    Level =
+        case Debug of
+            false ->
+                info;
+            true ->
+                DebugLoggerConfigDisk = #{
+                    file => lists:flatten(filename:join([LogDir, "debug",
+                        atom_to_list(node())])),
+                    type => wrap,
+                    max_no_files => 20,
+                    max_no_bytes => 51418800 % 10 x 5MB
+                },
+                logger:add_handler(disk_debug_log, logger_disk_log_h,
+                    #{ config => DebugLoggerConfigDisk, level => debug }),
+                debug
+        end,
+    LoggerFormatterDisk = #{
+        chars_limit => 16256,
+        max_size => 8128,
+        depth => 256,
+        legacy_header => false,
+        single_line => true,
+        template => [time," [",level,"] ",pid , " ",mfa,":",line," ",msg,"\n"]
+    },
+    logger:set_handler_config(disk_log, formatter, {logger_formatter, LoggerFormatterDisk}),
+    case App of
+        undefined ->
+            set_global_loglevel(Level);
+        _->
+            logger:set_application_level(App, Level)
+    end.
 
 %% Sets primary log level
 -spec get_global_loglevel() -> atom_log_level().
