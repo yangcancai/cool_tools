@@ -117,6 +117,8 @@
 %% ================================================
 -export([list_join/2]).
 -export([to_upper/1, encode_login_password/2]).
+-export([count_mixed_chars/1]).
+-export([count_chinese_chars/1]).
 
 to_binary(V) when is_integer(V) ->
     erlang:integer_to_binary(V);
@@ -636,3 +638,18 @@ to_upper(Str) when is_binary(Str) ->
 encode_login_password(RealPass, Time) when is_binary(RealPass) ->
     P = to_upper(sha1(RealPass)),
     to_upper(md5(<<P/binary, (erlang:integer_to_binary(Time))/binary>>)).
+
+count_mixed_chars(String) ->
+    case re:run(String, <<"\\p{Han}|\\p{Latin}|\\p{Nd}|\\p{P}|\\p{Z}">>, [unicode, global]) of
+        {match, Matches} ->
+            length(Matches);
+        nomatch ->
+            0
+    end.
+count_chinese_chars(String) ->
+    case re:run(String, <<"\\p{Han}">>, [unicode, global]) of
+        {match, Matches} ->
+            length(Matches);
+        nomatch ->
+            0
+    end.

@@ -31,7 +31,7 @@
 -compile(export_all).
 
 all() ->
-    [handle].
+    [count_chars].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(cool_tools),
@@ -50,16 +50,22 @@ end_per_testcase(_Case, _Config) ->
     ok.
 
 new_meck() ->
-    ok = meck:new(cool_tools, [non_strict, no_link]),
     ok.
 
 expect() ->
-    ok = meck:expect(cool_tools, test, fun() -> {ok, 1} end).
+    ok.
 
 del_meck() ->
     meck:unload().
 
-handle(_Config) ->
-    expect(),
-    ?assertEqual({ok, 1}, cool_tools:test()),
+count_chars(_) ->
+    ?assertEqual(0, cool_tools:count_chinese_chars(<<"1234">>)),
+    ?assertEqual(0, cool_tools:count_chinese_chars("1234")),
+    ?assertEqual(2, cool_tools:count_chinese_chars("1234你好")),
+    ?assertEqual(2, cool_tools:count_chinese_chars(<<"1234你好"/utf8>>)),
+    ?assertEqual(6, cool_tools:count_mixed_chars("1234你好")),
+    ?assertEqual(6, cool_tools:count_mixed_chars(<<"1234你好"/utf8>>)),
+    ?assertEqual(8, cool_tools:count_mixed_chars(<<"1234你好,."/utf8>>)),
+    ?assertEqual(9, cool_tools:count_mixed_chars(<<"1234你好,.。"/utf8>>)),
+    ?assertEqual(11, cool_tools:count_mixed_chars(<<"  1234你好,.。"/utf8>>)),
     ok.
