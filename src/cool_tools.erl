@@ -640,7 +640,8 @@ encode_login_password(RealPass, Time) when is_binary(RealPass) ->
     to_upper(md5(<<P/binary, (erlang:integer_to_binary(Time))/binary>>)).
 
 count_mixed_chars(String) ->
-    case re:run(String, <<"\\p{Han}|\\p{Latin}|\\p{Nd}|\\p{P}|\\p{Z}">>, [unicode, global]) of
+%%    case re:run(String, <<"\\p{Han}|\\p{Latin}|\\p{Nd}|\\p{P}|\\p{Z}|\\p{Cc}">>, [unicode, global]) of
+    case re:run(String, <<"\\p{Han}|\\p{Cc}|.">>, [unicode, global]) of
         {match, Matches} ->
             length(Matches);
         nomatch ->

@@ -68,4 +68,5 @@ count_chars(_) ->
     ?assertEqual(8, cool_tools:count_mixed_chars(<<"1234你好,."/utf8>>)),
     ?assertEqual(9, cool_tools:count_mixed_chars(<<"1234你好,.。"/utf8>>)),
     ?assertEqual(11, cool_tools:count_mixed_chars(<<"  1234你好,.。"/utf8>>)),
+    ?assertEqual(12, cool_tools:count_mixed_chars(<<"1\n\r1234你好,.。"/utf8>>)),
     ok.
