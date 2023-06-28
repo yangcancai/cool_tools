@@ -51,12 +51,20 @@ init([]) ->
           intensity => 10,
           period => 10},
     ChildSpecs =
-        [#{id => cool_tools_timer,
+        [
+          #{id => cool_tools_timer,
            start => {cool_tools_timer, start_link, []},
            restart => permanent,
            shutdown => 3000,
            type => worker,
-           modules => [cool_tools_timer]}],
+           modules => [cool_tools_timer]},
+           #{id => cool_tools_rate_limiter,
+           start => {cool_tools_rate_limiter, start_link, []},
+           restart => permanent,
+           shutdown => 3000,
+           type => worker,
+           modules => [cool_tools_rate_limiter]}
+          ],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
