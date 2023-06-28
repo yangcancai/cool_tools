@@ -41,7 +41,7 @@
 -type interval() ::
     hour | day | {once, pos_integer()} | {pos_integer(), pos_integer()} | pos_integer().
 
--record(state, {ref = undefined, expired = 0}).
+-record(state, {ref = undefined, expired = 0, send_ref = undefined}).
 
 %%%===================================================================
 %%% API
@@ -139,6 +139,14 @@ handle_cast(_Request, State = #state{}) ->
                      {noreply, NewState :: #state{}} |
                      {noreply, NewState :: #state{}, timeout() | hibernate} |
                      {stop, Reason :: term(), NewState :: #state{}}.
+handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval, SendRef}, #state{send_ref = CurrentSendRef} = State) ->
+    do_run_task({ExpiredTime, Name}, Callback, AfterInterval),
+    case SendRef of
+        CurrentSendRef ->
+          {noreply, do_go(State)};
+        _->
+          {noreply, State}
+    end;
 handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval}, State) ->
     do_run_task({ExpiredTime, Name}, Callback, AfterInterval),
     NewState = do_go(State),
@@ -245,17 +253,18 @@ do_go(State = #state{ref = OldRef}) ->
           Now = erlang:system_time(1000),
             case ExpiredTime -  Now of
                 After when After > 0 ->
+                    SendRef = make_ref(),
                     Ref = erlang:send_after(After,
                                             self(),
-                                            {run_task, Key, Callback, AfterInterval}),
-                    State#state{ref = Ref, expired = AfterInterval};
+                                            {run_task, Key, Callback, AfterInterval, SendRef}),
+                    State#state{ref = Ref, expired = AfterInterval, send_ref = SendRef};
                 _ ->
-                    {noreply, NewS} = handle_info({run_task, Key, Callback, AfterInterval}, State),
+                    {noreply, NewS} = handle_info({run_task, Key, Callback, AfterInterval}, State#state{ref = undefined}),
                     NewS
             end
     end.
+
+cancel_timer(undefined) ->
+  ok;
 cancel_timer(OldRef) when is_reference(OldRef)->
-    erlang:cancel_timer(OldRef),
-    ok;
-cancel_timer(_) ->
-    ok.
+    erlang:cancel_timer(OldRef).
