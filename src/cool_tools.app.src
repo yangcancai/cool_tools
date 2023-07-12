@@ -4,7 +4,7 @@
   {vsn, {cmd, "cat VERSION"}},
   {registered, []},
   {mod, {cool_tools_app, []}},
-  {applications, [kernel, stdlib, exometer_core, uuid, jiffy, flatlog, compiler]},
+  {applications, [kernel, stdlib, exometer_core, uuid, jiffy, flatlog, compiler, sasl]},
   {env, []},
   {modules, []},
   {licenses, ["Apache 2.0"]},

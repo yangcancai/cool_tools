@@ -32,6 +32,7 @@
 
 -export([to_binary/1]).
 -export([to_binary/2]).
+-export([to_utf8_binary/1]).
 -export([to_list/1]).
 -export([to_list/2]).
 -export([to_integer/1]).
@@ -119,6 +120,7 @@
 -export([to_upper/1, encode_login_password/2]).
 -export([count_mixed_chars/1]).
 -export([count_chinese_chars/1]).
+-export([os_cmd/1]).
 
 to_binary(V) when is_integer(V) ->
     erlang:integer_to_binary(V);
@@ -134,6 +136,19 @@ to_binary(V) when is_float(V) ->
 to_binary(V, N) when is_float(V), is_integer(N) ->
     erlang:float_to_binary(V, [{decimals, N}]).
 
+-spec to_utf8_binary(Val) -> Result when
+Val :: unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata(),
+Result :: binary()
+| {error, binary(), RestData}
+| {incomplete, binary(), binary()},
+RestData :: unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata().
+to_utf8_binary(Val) ->
+    case unicode:characters_to_binary(Val, utf8) of
+        {error, _, _} ->
+            unicode:characters_to_binary(Val, latin1);
+        UnicodeValue ->
+            UnicodeValue
+    end.
 to_list(V) when is_binary(V) ->
     erlang:binary_to_list(V);
 to_list(V) when is_atom(V) ->
@@ -653,4 +668,19 @@ count_chinese_chars(String) ->
             length(Matches);
         nomatch ->
             0
+    end.
+
+os_cmd(Command) ->
+    case os:type() of
+        {win32, _} ->
+            %% Clink workaround; see
+            %% https://code.google.com/p/clink/issues/detail?id=141
+            os:cmd(" " ++ Command);
+        _ ->
+            %% Don't just return "/bin/sh: <cmd>: not found" if not found
+            Exec = hd(string:tokens(Command, " ")),
+            case os:find_executable(Exec) of
+                false -> throw({command_not_found, Exec});
+                _     -> os:cmd(Command)
+            end
     end.
