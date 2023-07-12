@@ -29,7 +29,7 @@
 -define(DEFAULT_MEMORY_CHECK_INTERVAL, 1000).
 -define(ONE_MiB, 1048576).
 %% for tests
--export([parse_line_linux/1, parse_mem_limit/1, parse_mem_friendly/1]).
+-export([parse_line_linux/1, parse_mem_limit/1, parse_mem_friendly/1, parse_information_unit/1]).
 
 -define(SERVER, ?MODULE).
 
