@@ -143,7 +143,7 @@ internal_update(#state{opts = #opts{queue_len_limit = Limit, alarm_funs = {SetAl
       SetAlarm({{resource_limit, queue_len, node()},[]}),
       S#state{alarmed = true, total_queue_len = TotalQueueLen};
    {true, false} ->
-     ClearAlarm({{resource_limit, queue_len, node()},[]}),
+     ClearAlarm({resource_limit, queue_len, node()}),
      S#state{alarmed = false, total_queue_len = TotalQueueLen};
    _->
      S#state{total_queue_len = TotalQueueLen}
