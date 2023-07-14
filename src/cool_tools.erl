@@ -121,6 +121,7 @@
 -export([count_mixed_chars/1]).
 -export([count_chinese_chars/1]).
 -export([os_cmd/1]).
+-export([total_queue_len/0]).
 
 to_binary(V) when is_integer(V) ->
     erlang:integer_to_binary(V);
@@ -684,3 +685,15 @@ os_cmd(Command) ->
                 _     -> os:cmd(Command)
             end
     end.
+
+total_queue_len() ->
+        lists:foldl(fun(Pid, MsgQueLen) ->
+                       case erlang:process_info(Pid, [message_queue_len]) of
+                           [{message_queue_len, Msgs}] ->
+                               Msgs + MsgQueLen;
+                           _ ->
+                               MsgQueLen
+                       end
+                    end,
+                    0,
+                    erlang:processes()).
