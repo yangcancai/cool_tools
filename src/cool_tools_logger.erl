@@ -66,6 +66,14 @@ start_default_log(App, LogDir, Debug) ->
         depth => 256,
         template => [time," [",level,"] ", pid, " ",mfa,":",line," ",msg,"\n"]
     },
+     LoggerFormatterDisk = #{
+        chars_limit => 16256,
+        max_size => 8128,
+        depth => 256,
+        legacy_header => false,
+        single_line => true,
+        template => [time," [",level,"] ",pid , " ",mfa,":",line," ",msg,"\n"]
+    },
     logger:set_handler_config(default, formatter, {logger_formatter, LoggerFormatterConsole}),
     logger:set_handler_config(default, level, error),
     %% Configure logging to the logfile.
@@ -91,16 +99,9 @@ start_default_log(App, LogDir, Debug) ->
                 },
                 logger:add_handler(disk_debug_log, logger_disk_log_h,
                     #{ config => DebugLoggerConfigDisk, level => debug }),
+                logger:set_handler_config(disk_debug_log, formatter, {logger_formatter, LoggerFormatterDisk}),
                 debug
         end,
-    LoggerFormatterDisk = #{
-        chars_limit => 16256,
-        max_size => 8128,
-        depth => 256,
-        legacy_header => false,
-        single_line => true,
-        template => [time," [",level,"] ",pid , " ",mfa,":",line," ",msg,"\n"]
-    },
     logger:set_handler_config(disk_log, formatter, {logger_formatter, LoggerFormatterDisk}),
     case App of
         undefined ->

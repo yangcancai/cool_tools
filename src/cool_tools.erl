@@ -122,6 +122,7 @@
 -export([count_chinese_chars/1]).
 -export([os_cmd/1]).
 -export([total_queue_len/0]).
+-export([total_process_len/0]).
 
 to_binary(V) when is_integer(V) ->
     erlang:integer_to_binary(V);
@@ -697,3 +698,6 @@ total_queue_len() ->
                     end,
                     0,
                     erlang:processes()).
+
+total_process_len() ->
+    erlang:length(erlang:processes()).
