@@ -133,7 +133,7 @@ add_or_upddate_handler(HandlerID, Level, MaxFiles, MaxBytes, LogDir) ->
     add_or_upddate_handler(HandlerID, Config, Level).
 
 update_logger_formatter(HandlerID, LoggerFormatter) ->
-    NewFormatter = maps:merger(default_logger_formatter(), LoggerFormatter),
+    NewFormatter = maps:merge(default_logger_formatter(), LoggerFormatter),
     ok = logger:set_handler_config(HandlerID, formatter, {logger_formatter, NewFormatter}).
 
 unlimited_logger_formatter(HandlerID) ->

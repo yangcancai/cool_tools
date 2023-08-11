@@ -14,7 +14,7 @@
 
 %% API
 -export([take_token/4, take_token/5, take_token/6, take_token/7, rate_limit/4,
-  rate_limit/5, start_link/0, i/0, i/1]).
+  rate_limit/5, start_link/0, i/0, i/1, timestamp_to_localtime/2, localtime_to_timestamp/2]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
   code_change/3]).
@@ -308,8 +308,11 @@ del(Key, Acc) ->
   case ets:lookup(rate_limit_store, Key) of
     [] ->
       Acc;
-    [#rate_limit_store{ttl = TTL} = R] when Now > TTL ->
-      true = ets:delete(R)
+    [#rate_limit_store{ttl = TTL}] when Now > TTL ->
+      true = ets:delete(rate_limit_store, Key),
+      Acc;
+    _->
+      Acc
   end.
 
 assign(Key, KeyR, #state{keys = Keys} = State) ->
