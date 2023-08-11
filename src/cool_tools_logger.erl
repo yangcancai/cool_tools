@@ -38,7 +38,8 @@
          format_stacktrace_filter/2]).
 %% Test API
 -export([log_with_lvl/2]).
--export([start_default_log/0, start_default_log/1, start_default_log/2, start_default_log/3]).
+-export([start_default_log/0, start_default_log/1, start_default_log/2, start_default_log/3, add_or_upddate_handler/2,
+    add_or_upddate_handler/3, add_or_upddate_handler/4, add_or_upddate_handler/5, update_logger_formatter/2, unlimited_logger_formatter/1]).
 
 -define(DEPRECATION_TAB, cool_tools_deprecations).         % ETS table name
 -define(DEFAULT_COOLDOWN_HOURS, 6).             % default cooldown time
@@ -109,6 +110,62 @@ start_default_log(App, LogDir, Debug) ->
         _->
             logger:set_application_level(App, Level)
     end.
+
+add_or_upddate_handler(HandlerID, Level) ->
+    add_or_upddate_handler(HandlerID, default_config(), Level, default_logger_formatter()).
+
+add_or_upddate_handler(HandlerID, Config, Level) ->
+    add_or_upddate_handler(HandlerID, Config, Level, default_logger_formatter()).
+
+add_or_upddate_handler(HandlerID, Config, Level, LoggerFormatter) ->
+    case handler_exists(HandlerID) of
+        true ->
+         ok = logger:remove_handler(HandlerID);
+        _->
+         ok
+    end,
+ ok = logger:add_handler(HandlerID, logger_disk_log_h,
+        #{ config => Config, level => Level}),
+ ok = logger:set_handler_config(HandlerID, formatter, {logger_formatter, LoggerFormatter}).
+
+add_or_upddate_handler(HandlerID, Level, MaxFiles, MaxBytes, LogDir) ->
+    Config = default_config(LogDir, MaxFiles, MaxBytes),
+    add_or_upddate_handler(HandlerID, Config, Level).
+
+update_logger_formatter(HandlerID, LoggerFormatter) ->
+    NewFormatter = maps:merger(default_logger_formatter(), LoggerFormatter),
+    ok = logger:set_handler_config(HandlerID, formatter, {logger_formatter, NewFormatter}).
+
+unlimited_logger_formatter(HandlerID) ->
+    Formatter = default_logger_formatter(),
+    ok = logger:set_handler_config(HandlerID, formatter, {logger_formatter, Formatter#{
+        chars_limit => unlimited,
+        max_size => unlimited,
+        depth => unlimited
+        }}).
+
+handler_exists(HandlerID) ->
+  lists:member(HandlerID, logger:get_handler_ids()).
+
+default_config(LogDir, MaxFiles, MaxBytes) ->
+    #{
+        file => lists:flatten(filename:join(LogDir, atom_to_list(node()))),
+        type => wrap,
+        max_no_files => MaxFiles,
+        max_no_bytes => MaxBytes % 10 x 5MB
+    }.
+default_config() ->
+   LogDir = "./log",
+   default_config(LogDir, 10, 524288000).
+default_logger_formatter() ->
+   #{
+        chars_limit => 16256,
+        max_size => 8128,
+        depth => 256,
+        legacy_header => false,
+        single_line => true,
+        template => [time," [",level,"] ",pid , " ",mfa,":",line," ",msg,"\n"]
+    }.
 
 %% Sets primary log level
 -spec get_global_loglevel() -> atom_log_level().
