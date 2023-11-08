@@ -41,22 +41,24 @@ del_meck() ->
     meck:unload().
 
 rate_limit(_) ->
-  #{allowed := true} = cool_tools_rate_limiter:rate_limit(a, 1,1,1),
-  #{allowed := true} = cool_tools_rate_limiter:rate_limit(b, 0,1,1),
-  #{allowed := false} = cool_tools_rate_limiter:rate_limit(b, 0,1,1),
-  ok.
+    #{allowed := true} = cool_tools_rate_limiter:rate_limit(a, 1, 1, 1),
+    #{allowed := true} = cool_tools_rate_limiter:rate_limit(b, 0, 1, 1),
+    #{allowed := false} = cool_tools_rate_limiter:rate_limit(b, 0, 1, 1),
+    ok.
+
 take_token(_) ->
-  ?assertEqual(true, cool_tools_rate_limiter:take_token(c, 0, 1, 10)),
-  ?assertEqual({error, timeout}, cool_tools_rate_limiter:take_token(c, 0, 1, 10)),
-  receive
-     _V -> ?assertMatch(ok, {error, not_expected_to_receive})
-  after 2000 ->
-    ok
-  end,
-  %% burst + 1 = Max
-  [ true = cool_tools_rate_limiter:take_token(d, 1000, 1, 2) || _ <- lists:seq(1,1001)],
-  %% default timeout equal 1000ms
-  {error, timeout} = cool_tools_rate_limiter:take_token(d, 1000, 1, 2),
-  %% already wait 2000ms
-  true = cool_tools_rate_limiter:take_token(d, 1000, 1, 2),
-  ok.
+    ?assertEqual(true, cool_tools_rate_limiter:take_token(c, 0, 1, 10)),
+    ?assertEqual({error, timeout}, cool_tools_rate_limiter:take_token(c, 0, 1, 10)),
+    receive
+        _V ->
+            ?assertMatch(ok, {error, not_expected_to_receive})
+    after 2000 ->
+        ok
+    end,
+    %% burst + 1 = Max
+    [true = cool_tools_rate_limiter:take_token(d, 1000, 1, 2) || _ <- lists:seq(1, 1001)],
+    %% default timeout equal 1000ms
+    {error, timeout} = cool_tools_rate_limiter:take_token(d, 1000, 1, 2),
+    %% already wait 2000ms
+    true = cool_tools_rate_limiter:take_token(d, 1000, 1, 2),
+    ok.

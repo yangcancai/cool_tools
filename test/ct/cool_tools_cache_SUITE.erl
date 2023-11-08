@@ -19,9 +19,10 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 2021-11-18T07:25:32+00:00
+%%% Created : 2021-09-08T09:21:17+00:00
 %%%-------------------------------------------------------------------
--module(cool_tools_pa_SUITE).
+
+-module(cool_tools_cache_SUITE).
 
 -author("yangcancai").
 
@@ -29,20 +30,17 @@
 
 -compile(export_all).
 
--define(APP, cool_tools).
-
 all() ->
-    [pa].
+    [set_and_get].
 
 init_per_suite(Config) ->
-    {ok, _} = application:ensure_all_started(?APP),
-    cool_tools_logger:set_global_loglevel(all),
+    {ok, _} = application:ensure_all_started(cool_tools),
     new_meck(),
     Config.
 
 end_per_suite(Config) ->
     del_meck(),
-    ok = application:stop(?APP),
+    application:stop(cool_tools),
     Config.
 
 init_per_testcase(_Case, Config) ->
@@ -52,29 +50,37 @@ end_per_testcase(_Case, _Config) ->
     ok.
 
 new_meck() ->
-    % ok = meck:new(cool_tools_logger, [non_strict, no_link]),
     ok.
 
 expect() ->
-    % ok = meck:expect(cool_tools_logger, test, fun() -> {ok, 1} end).
     ok.
 
 del_meck() ->
     meck:unload().
 
-pa(_) ->
-    ?assertEqual(do_something_on_a_list_of_items([a, b]), [{a, 1, 2, 3}, {b, 1, 2, 3}]),
+set_and_get(_) ->
+    %% check
+     ?assertEqual([], cool_tools_cache:get(key1)),
+    %% call
+     ok = cool_tools_cache:set(key1, <<"hello">>),
+     ?assertEqual([{key1, <<"hello">>}], cool_tools_cache:get(key1)),
+    %% async
+     ok = cool_tools_cache:async_set(key1, <<"hello1">>),
+     timer:sleep(10),
+     ?assertEqual([{key1, <<"hello1">>}], cool_tools_cache:get(key1)),
+     %%  ttl
+     ok = cool_tools_cache:set(key1, <<"hello2">>, 1),
+     ok = cool_tools_cache:set(key2, <<"hello22">>, 2),
+     ?assertEqual([{key1, <<"hello2">>}], cool_tools_cache:get(key1)),
+     ?assertEqual([{key2, <<"hello22">>}], cool_tools_cache:get(key2)),
+     timer:sleep(2),
+     cool_tools_cache:manual_check_ttl(),
+     ?assertEqual([], cool_tools_cache:get(key1)),
+     ?assertEqual([], cool_tools_cache:get(key2)),
+
+     %% clear
+     ok = cool_tools_cache:set(key1, <<"hello3">>, 10000),
+     ?assertEqual([{key1, <<"hello3">>}], cool_tools_cache:get(key1)),
+     cool_tools_cache:clear(),
+     ?assertEqual([], cool_tools_cache:get(key1)),
     ok.
-
-do_something_on_a_list_of_items(ListOfItems) ->
-    SomeVar1 = 1,
-    SomeVar2 = 2,
-    SomeVar3 = 3,
-    lists:reverse(
-        lists:foldl(
-            cool_tools_pa:bind(fun do_something_with_one_item/5, SomeVar1, SomeVar2, SomeVar3),
-            [],
-            ListOfItems)).
-
-do_something_with_one_item(SomeVar1, SomeVar2, SomeVar3, Elem, Acc) ->
-    [{Elem, SomeVar1, SomeVar2, SomeVar3} | Acc].

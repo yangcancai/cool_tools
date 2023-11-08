@@ -162,15 +162,22 @@ do_format_str(S, #{format_depth := unlimited, format_chars_limit := L}) ->
 do_format_str(S, #{format_depth := D, format_chars_limit := L}) ->
     io_lib:format("~0tP", [S, D], format_chars_limit_to_opts(L)).
 
-process_metadata(#{meta := #{time := T, mfa := {M, F, _}, pid := Pid, line := Line}, level := L}) ->
+process_metadata(#{meta :=
+                       #{time := T,
+                         mfa := {M, F, _},
+                         pid := Pid,
+                         line := Line},
+                   level := L}) ->
     #{level => L,
       'when' => format_time(T),
-      mfa => erlang:list_to_binary(io_lib:format("~p:~p(~p)", [M, F, Line])), pid => Pid};
+      mfa =>
+          erlang:list_to_binary(
+              io_lib:format("~p:~p(~p)", [M, F, Line])),
+      pid => Pid};
 process_metadata(#{meta := #{time := T, pid := Pid}, level := L}) ->
     #{level => L,
       'when' => format_time(T),
       pid => Pid}.
-
 
 config_correct_depth(C = #{depth := unlimited}) ->
     C#{depth := -1};

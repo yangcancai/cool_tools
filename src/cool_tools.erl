@@ -138,12 +138,10 @@ to_binary(V) when is_float(V) ->
 to_binary(V, N) when is_float(V), is_integer(N) ->
     erlang:float_to_binary(V, [{decimals, N}]).
 
--spec to_utf8_binary(Val) -> Result when
-Val :: unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata(),
-Result :: binary()
-| {error, binary(), RestData}
-| {incomplete, binary(), binary()},
-RestData :: unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata().
+-spec to_utf8_binary(Val) -> Result
+    when Val :: unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata(),
+         Result :: binary() | {error, binary(), RestData} | {incomplete, binary(), binary()},
+         RestData :: unicode:latin1_chardata() | unicode:chardata() | unicode:external_chardata().
 to_utf8_binary(Val) ->
     case unicode:characters_to_binary(Val, utf8) of
         {error, _, _} ->
@@ -151,6 +149,7 @@ to_utf8_binary(Val) ->
         UnicodeValue ->
             UnicodeValue
     end.
+
 to_list(V) when is_binary(V) ->
     erlang:binary_to_list(V);
 to_list(V) when is_atom(V) ->
@@ -657,13 +656,14 @@ encode_login_password(RealPass, Time) when is_binary(RealPass) ->
     to_upper(md5(<<P/binary, (erlang:integer_to_binary(Time))/binary>>)).
 
 count_mixed_chars(String) ->
-%%    case re:run(String, <<"\\p{Han}|\\p{Latin}|\\p{Nd}|\\p{P}|\\p{Z}|\\p{Cc}">>, [unicode, global]) of
+    %%    case re:run(String, <<"\\p{Han}|\\p{Latin}|\\p{Nd}|\\p{P}|\\p{Z}|\\p{Cc}">>, [unicode, global]) of
     case re:run(String, <<"\\p{Han}|\\p{Cc}|.">>, [unicode, global]) of
         {match, Matches} ->
             length(Matches);
         nomatch ->
             0
     end.
+
 count_chinese_chars(String) ->
     case re:run(String, <<"\\p{Han}">>, [unicode, global]) of
         {match, Matches} ->
@@ -682,22 +682,25 @@ os_cmd(Command) ->
             %% Don't just return "/bin/sh: <cmd>: not found" if not found
             Exec = hd(string:tokens(Command, " ")),
             case os:find_executable(Exec) of
-                false -> throw({command_not_found, Exec});
-                _     -> os:cmd(Command)
+                false ->
+                    throw({command_not_found, Exec});
+                _ ->
+                    os:cmd(Command)
             end
     end.
 
 total_queue_len() ->
-        lists:foldl(fun(Pid, MsgQueLen) ->
-                       case erlang:process_info(Pid, [message_queue_len]) of
-                           [{message_queue_len, Msgs}] ->
-                               Msgs + MsgQueLen;
-                           _ ->
-                               MsgQueLen
-                       end
-                    end,
-                    0,
-                    erlang:processes()).
+    lists:foldl(fun(Pid, MsgQueLen) ->
+                   case erlang:process_info(Pid, [message_queue_len]) of
+                       [{message_queue_len, Msgs}] ->
+                           Msgs + MsgQueLen;
+                       _ ->
+                           MsgQueLen
+                   end
+                end,
+                0,
+                erlang:processes()).
 
 total_process_len() ->
-    erlang:length(erlang:processes()).
+    erlang:length(
+        erlang:processes()).

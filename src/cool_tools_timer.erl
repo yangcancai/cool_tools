@@ -30,12 +30,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start/0,start_link/0, add/3, remove/1, get_list/0, i/0, stop/0]).
+-export([start/0, start_link/0, add/3, remove/1, get_list/0, i/0, stop/0]).
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
          code_change/3]).
 
 -define(SERVER, ?MODULE).
+
 -type name() :: term().
 -type callback() :: {atom(), atom(), list()} | function() | {function(), list()}.
 -type interval() ::
@@ -49,16 +50,21 @@
 start() ->
     ?MODULE = ets:new(?MODULE, [named_table, ordered_set, public]),
     ok.
+
 %% @doc Spawns the server and registers the local name (unique)
 -spec start_link() -> {ok, Pid :: pid()} | ignore | {error, Reason :: term()}.
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
 stop() ->
     gen_server:call(?MODULE, stop).
+
 get_list() ->
     ets:tab2list(?MODULE).
+
 i() ->
     gen_server:call(?MODULE, i).
+
 -spec add(name(), Callback :: callback(), interval()) -> ok.
 add(Name, Callback, {Min, Max} = AfterInterval)
     when is_integer(Min), is_integer(Max), Max > Min, Min >= 0 ->
@@ -139,13 +145,14 @@ handle_cast(_Request, State = #state{}) ->
                      {noreply, NewState :: #state{}} |
                      {noreply, NewState :: #state{}, timeout() | hibernate} |
                      {stop, Reason :: term(), NewState :: #state{}}.
-handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval, SendRef}, #state{send_ref = CurrentSendRef} = State) ->
+handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval, SendRef},
+            #state{send_ref = CurrentSendRef} = State) ->
     do_run_task({ExpiredTime, Name}, Callback, AfterInterval),
     case SendRef of
         CurrentSendRef ->
-          {noreply, do_go(State)};
-        _->
-          {noreply, State}
+            {noreply, do_go(State)};
+        _ ->
+            {noreply, State}
     end;
 handle_info({run_task, {ExpiredTime, Name}, Callback, AfterInterval}, State) ->
     do_run_task({ExpiredTime, Name}, Callback, AfterInterval),
@@ -183,12 +190,8 @@ code_change(_OldVsn, State = #state{}, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 do_add_timer(Name, Callback, AfterInterval) ->
-   Expired = erlang:system_time(1000) + pre_interval(AfterInterval),
-    true =
-        ets:insert(?MODULE,
-                   {{Expired, Name},
-                    Callback,
-                    AfterInterval}),
+    Expired = erlang:system_time(1000) + pre_interval(AfterInterval),
+    true = ets:insert(?MODULE, {{Expired, Name}, Callback, AfterInterval}),
     ok.
 
 do_remove_timer(Name) ->
@@ -212,7 +215,7 @@ pre_interval(I) ->
     I.
 
 do_del_timer({ExpiredTime, Name}) ->
-  true = ets:delete(?MODULE, {ExpiredTime, Name}),
+    true = ets:delete(?MODULE, {ExpiredTime, Name}),
     ok.
 
 do_run_task({ExpiredTime, Name}, Callback, AfterInterval) ->
@@ -244,27 +247,31 @@ do_apply(Fun) when is_function(Fun) ->
 
 do_go(State = #state{ref = OldRef}) ->
     %% cancel old timer
-     cancel_timer(OldRef),
+    cancel_timer(OldRef),
     case ets:first(?MODULE) of
         '$end_of_table' ->
             State#state{ref = undefined, expired = 0};
         {ExpiredTime, _Name} = Key ->
             [{_, Callback, AfterInterval} = _Who] = ets:lookup(?MODULE, Key),
-          Now = erlang:system_time(1000),
-            case ExpiredTime -  Now of
+            Now = erlang:system_time(1000),
+            case ExpiredTime - Now of
                 After when After > 0 ->
                     SendRef = make_ref(),
                     Ref = erlang:send_after(After,
                                             self(),
                                             {run_task, Key, Callback, AfterInterval, SendRef}),
-                    State#state{ref = Ref, expired = AfterInterval, send_ref = SendRef};
+                    State#state{ref = Ref,
+                                expired = AfterInterval,
+                                send_ref = SendRef};
                 _ ->
-                    {noreply, NewS} = handle_info({run_task, Key, Callback, AfterInterval}, State#state{ref = undefined}),
+                    {noreply, NewS} =
+                        handle_info({run_task, Key, Callback, AfterInterval},
+                                    State#state{ref = undefined}),
                     NewS
             end
     end.
 
 cancel_timer(undefined) ->
-  ok;
-cancel_timer(OldRef) when is_reference(OldRef)->
+    ok;
+cancel_timer(OldRef) when is_reference(OldRef) ->
     erlang:cancel_timer(OldRef).
