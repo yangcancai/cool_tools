@@ -26,7 +26,7 @@
 
 %% for tests
 -export([parse_line_linux/1, parse_mem_limit/1, parse_mem_friendly/1,
-         parse_information_unit/1]).
+         parse_information_unit/1, friend_memory/0]).
 
 -define(SERVER, ?MODULE).
 
@@ -66,6 +66,10 @@
 %%----------------------------------------------------------------------------
 %% Public API
 %%----------------------------------------------------------------------------
+%% 
+friend_memory() ->
+    lists:reverse(
+        lists:foldl(fun process_mem/2, [], erlang:memory())).
 
 get_total_memory() ->
     get_total_memory_from_os().
