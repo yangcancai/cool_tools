@@ -714,11 +714,11 @@ list_not_healthy_pids(Max) when Max > 0 ->
     Rs = lists:foldl(fun(Pid, Acc) ->
                         case erlang:process_info(Pid, [message_queue_len]) of
                             [{message_queue_len, Len}] when Len > Max ->
-                                [Acc | {Pid, Len}];
+                                [{Pid, Len, erlang:process_info(Pid,initial_call)} | Acc];
                             _ ->
                                 Acc
                         end
                      end,
                      [],
                      erlang:processes()),
-    lists:sort(fun({_, Len1}, {_, Len2}) -> Len1 > Len2 end, Rs).
+    lists:sort(fun({_, _,  Len1}, {_, _, Len2}) -> Len1 > Len2 end, Rs).
