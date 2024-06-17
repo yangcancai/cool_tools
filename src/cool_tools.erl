@@ -123,6 +123,8 @@
 -export([os_cmd/1]).
 -export([total_queue_len/0]).
 -export([total_process_len/0]).
+-export([list_not_healthy_pids/0]).
+-export([list_not_healthy_pids/1]).
 
 to_binary(V) when is_integer(V) ->
     erlang:integer_to_binary(V);
@@ -704,3 +706,19 @@ total_queue_len() ->
 total_process_len() ->
     erlang:length(
         erlang:processes()).
+
+list_not_healthy_pids() ->
+    list_not_healthy_pids(100).
+
+list_not_healthy_pids(Max) when Max > 0 ->
+    Rs = lists:foldl(fun(Pid, Acc) ->
+                        case erlang:process_info(Pid, [message_queue_len]) of
+                            [{message_queue_len, Len}] when Len > Max ->
+                                [Acc | {Pid, Len}];
+                            _ ->
+                                Acc
+                        end
+                     end,
+                     [],
+                     erlang:processes()),
+    lists:sort(fun({_, Len1}, {_, Len2}) -> Len1 > Len2 end, Rs).

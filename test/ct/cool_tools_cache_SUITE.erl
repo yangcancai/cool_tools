@@ -60,27 +60,27 @@ del_meck() ->
 
 set_and_get(_) ->
     %% check
-     ?assertEqual([], cool_tools_cache:get(key1)),
+    ?assertEqual([], cool_tools_cache:get(key1)),
     %% call
-     ok = cool_tools_cache:set(key1, <<"hello">>),
-     ?assertEqual([{key1, <<"hello">>}], cool_tools_cache:get(key1)),
+    ok = cool_tools_cache:set(key1, <<"hello">>),
+    ?assertEqual([{key1, <<"hello">>}], cool_tools_cache:get(key1)),
     %% async
-     ok = cool_tools_cache:async_set(key1, <<"hello1">>),
-     timer:sleep(10),
-     ?assertEqual([{key1, <<"hello1">>}], cool_tools_cache:get(key1)),
-     %%  ttl
-     ok = cool_tools_cache:set(key1, <<"hello2">>, 1),
-     ok = cool_tools_cache:set(key2, <<"hello22">>, 2),
-     ?assertEqual([{key1, <<"hello2">>}], cool_tools_cache:get(key1)),
-     ?assertEqual([{key2, <<"hello22">>}], cool_tools_cache:get(key2)),
-     timer:sleep(2),
-     cool_tools_cache:manual_check_ttl(),
-     ?assertEqual([], cool_tools_cache:get(key1)),
-     ?assertEqual([], cool_tools_cache:get(key2)),
+    ok = cool_tools_cache:async_set(key1, <<"hello1">>),
+    timer:sleep(10),
+    ?assertEqual([{key1, <<"hello1">>}], cool_tools_cache:get(key1)),
+    %%  ttl
+    ok = cool_tools_cache:set(key1, <<"hello2">>, 1),
+    ok = cool_tools_cache:set(key2, <<"hello22">>, 2),
+    ?assertEqual([{key1, <<"hello2">>}], cool_tools_cache:get(key1)),
+    ?assertEqual([{key2, <<"hello22">>}], cool_tools_cache:get(key2)),
+    timer:sleep(2),
+    cool_tools_cache:manual_check_ttl(),
+    ?assertEqual([], cool_tools_cache:get(key1)),
+    ?assertEqual([], cool_tools_cache:get(key2)),
 
-     %% clear
-     ok = cool_tools_cache:set(key1, <<"hello3">>, 10000),
-     ?assertEqual([{key1, <<"hello3">>}], cool_tools_cache:get(key1)),
-     cool_tools_cache:clear(),
-     ?assertEqual([], cool_tools_cache:get(key1)),
+    %% clear
+    ok = cool_tools_cache:set(key1, <<"hello3">>, 10000),
+    ?assertEqual([{key1, <<"hello3">>}], cool_tools_cache:get(key1)),
+    cool_tools_cache:clear(),
+    ?assertEqual([], cool_tools_cache:get(key1)),
     ok.
