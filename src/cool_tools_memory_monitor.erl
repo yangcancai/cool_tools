@@ -26,7 +26,7 @@
 
 %% for tests
 -export([parse_line_linux/1, parse_mem_limit/1, parse_mem_friendly/1,
-         parse_information_unit/1, friend_memory/0, group_proc_memory/0]).
+         parse_information_unit/1, friend_memory/0, group_proc_memory/0, group_proc_memory/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -656,20 +656,37 @@ process_mem({Type, Bytes}, Acc) when Bytes < 1024 * 1024 * 1024 * 1024 ->
     [{Type, <<(cool_tools:to_binary(Bytes / 1024 / 1024 / 1024))/binary, "G">>} | Acc].
 
 group_proc_memory() ->
+    group_proc_memory(sum).
+
+group_proc_memory(Type) when Type == sum; Type == all->
     L = erlang:processes(),
     Res = maps:to_list(
               lists:foldl(fun do_group_proc_memory/2, #{}, L)),
-    [begin
-         [{Name, M1}] = process_mem({Name, M}, []),
-         {Name, M1, Num}
-     end
-     || {Name, {M, Num}} <- lists:sort(fun({_, {A, _}}, {_, {B, _}}) -> A > B end, Res)].
+    case Type of
+        sum ->
+            [begin
+                 [{Name, M1}] = process_mem({Name, M}, []),
+                 {Name, M1, Num}
+             end
+             || {Name, {M, Num, _}}
+                    <- lists:sort(fun({_, {A, _, _}}, {_, {B, _, _}}) -> A > B end, Res)];
+        all ->
+            [begin
+                 [{Name, M1}] = process_mem({Name, M}, []),
+                 NewDetail = lists:sort(fun({_, A}, {_, B}) -> A > B end, Detail),
+                 {Name, M1, Num, NewDetail}
+             end
+             || {Name, {M, Num, Detail}}
+                    <- lists:sort(fun({_, {A, _, _}}, {_, {B, _, _}}) -> A > B end, Res)]
+    end;
+group_proc_memory(Name) ->
+    [ {Name0, M, Num, Detail} || {Name0, M, Num, Detail} <- group_proc_memory(all), Name == Name0].
 
 do_group_proc_memory(Pid, Acc) ->
     {memory, M} = erlang:process_info(Pid, memory),
     Name = reg_name_or_init_call(Pid),
-    {Old, Number} = maps:get(Name, Acc, {0, 0}),
-    Acc#{Name => {Old + M, Number+1}}.
+    {Old, Number, Detail} = maps:get(Name, Acc, {0, 0, []}),
+    Acc#{Name => {Old + M, Number + 1, [{Pid, M} | Detail]}}.
 
 reg_name_or_init_call(Pid) ->
     case erlang:process_info(Pid, registered_name) of
