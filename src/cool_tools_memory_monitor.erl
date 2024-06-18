@@ -26,7 +26,7 @@
 
 %% for tests
 -export([parse_line_linux/1, parse_mem_limit/1, parse_mem_friendly/1,
-         parse_information_unit/1, friend_memory/0]).
+         parse_information_unit/1, friend_memory/0, group_proc_memory/0]).
 
 -define(SERVER, ?MODULE).
 
@@ -654,3 +654,33 @@ process_mem({Type, Bytes}, Acc) when Bytes < 1024 * 1024 * 1024 ->
     [{Type, <<(cool_tools:to_binary(Bytes / 1024 / 1024))/binary, "M">>} | Acc];
 process_mem({Type, Bytes}, Acc) when Bytes < 1024 * 1024 * 1024 * 1024 ->
     [{Type, <<(cool_tools:to_binary(Bytes / 1024 / 1024 / 1024))/binary, "G">>} | Acc].
+
+group_proc_memory() ->
+    L = erlang:processes(),
+    Res = maps:to_list(
+              lists:foldl(fun do_group_proc_memory/2, #{}, L)),
+    [begin
+         [{Name, M1}] = process_mem({Name, M}, []),
+         {Name, M1}
+     end
+     || {Name, M} <- lists:sort(fun({_, A}, {_, B}) -> A > B end, Res)].
+
+do_group_proc_memory(Pid, Acc) ->
+    {memory, M} = erlang:process_info(Pid, memory),
+    Name = reg_name_or_init_call(Pid),
+    Old = maps:get(Name, Acc, 0),
+    Acc#{Name => Old + M}.
+
+reg_name_or_init_call(Pid) ->
+    case erlang:process_info(Pid, registered_name) of
+        {_, Name} ->
+            Name;
+        [] ->
+            {dictionary, D} = erlang:process_info(Pid, dictionary),
+            {Mod, F, N} =
+                proplists:get_value('$initial_call',
+                                    D,
+                                    element(2, erlang:process_info(Pid, initial_call))),
+            erlang:iolist_to_binary(
+                io_lib:format("~p:~p/~p", [Mod, F, N]))
+    end.
