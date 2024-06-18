@@ -661,15 +661,15 @@ group_proc_memory() ->
               lists:foldl(fun do_group_proc_memory/2, #{}, L)),
     [begin
          [{Name, M1}] = process_mem({Name, M}, []),
-         {Name, M1}
+         {Name, M1, Num}
      end
-     || {Name, M} <- lists:sort(fun({_, A}, {_, B}) -> A > B end, Res)].
+     || {Name, {M, Num}} <- lists:sort(fun({_, {A, _}}, {_, {B, _}}) -> A > B end, Res)].
 
 do_group_proc_memory(Pid, Acc) ->
     {memory, M} = erlang:process_info(Pid, memory),
     Name = reg_name_or_init_call(Pid),
-    Old = maps:get(Name, Acc, 0),
-    Acc#{Name => Old + M}.
+    {Old, Number} = maps:get(Name, Acc, {0, 0}),
+    Acc#{Name => {Old + M, Number+1}}.
 
 reg_name_or_init_call(Pid) ->
     case erlang:process_info(Pid, registered_name) of
