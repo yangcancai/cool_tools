@@ -714,7 +714,7 @@ list_not_healthy_pids(Max) when Max > 0 ->
     Rs = lists:foldl(fun(Pid, Acc) ->
                         case erlang:process_info(Pid, [message_queue_len]) of
                             [{message_queue_len, Len}] when Len > Max ->
-                                [{Pid, Len, erlang:process_info(Pid, initial_call)} | Acc];
+                                [{Pid, Len, cool_tools_memory_monitor:reg_name_or_init_call(Pid)} | Acc];
                             _ ->
                                 Acc
                         end
