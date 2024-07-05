@@ -26,7 +26,8 @@
 
 %% for tests
 -export([parse_line_linux/1, parse_mem_limit/1, parse_mem_friendly/1,
-         parse_information_unit/1, friend_memory/0, group_proc_memory/0, group_proc_memory/1,reg_name_or_init_call/1]).
+         parse_information_unit/1, friend_memory/0, group_proc_memory/0, group_proc_memory/1,
+         reg_name_or_init_call/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -658,7 +659,7 @@ process_mem({Type, Bytes}, Acc) when Bytes < 1024 * 1024 * 1024 * 1024 ->
 group_proc_memory() ->
     group_proc_memory(sum).
 
-group_proc_memory(Type) when Type == sum; Type == all->
+group_proc_memory(Type) when Type == sum; Type == all ->
     L = erlang:processes(),
     Res = maps:to_list(
               lists:foldl(fun do_group_proc_memory/2, #{}, L)),
@@ -680,24 +681,41 @@ group_proc_memory(Type) when Type == sum; Type == all->
                     <- lists:sort(fun({_, {A, _, _}}, {_, {B, _, _}}) -> A > B end, Res)]
     end;
 group_proc_memory(Name) ->
-    [ {Name0, M, Num, Detail} || {Name0, M, Num, Detail} <- group_proc_memory(all), Name == Name0].
+    [{Name0, M, Num, Detail}
+     || {Name0, M, Num, Detail} <- group_proc_memory(all), Name == Name0].
 
 do_group_proc_memory(Pid, Acc) ->
-    {memory, M} = erlang:process_info(Pid, memory),
-    Name = reg_name_or_init_call(Pid),
-    {Old, Number, Detail} = maps:get(Name, Acc, {0, 0, []}),
-    Acc#{Name => {Old + M, Number + 1, [{Pid, M} | Detail]}}.
+    case erlang:process_info(Pid, memory) of
+        {memory, M} ->
+            case reg_name_or_init_call(Pid) of
+                undefined ->
+                    Acc;
+                Name ->
+                    {Old, Number, Detail} = maps:get(Name, Acc, {0, 0, []}),
+                    Acc#{Name => {Old + M, Number + 1, [{Pid, M} | Detail]}}
+            end;
+        undefined ->
+            Acc
+    end.
 
 reg_name_or_init_call(Pid) ->
     case erlang:process_info(Pid, registered_name) of
+        undefined ->
+            undefined;
         {_, Name} ->
             Name;
         [] ->
-            {dictionary, D} = erlang:process_info(Pid, dictionary),
-            {Mod, F, N} =
-                proplists:get_value('$initial_call',
-                                    D,
-                                    element(2, erlang:process_info(Pid, initial_call))),
-            erlang:iolist_to_binary(
-                io_lib:format("~p:~p/~p", [Mod, F, N]))
+            case erlang:process_info(Pid, dictionary) of
+                {dictionary, D} ->
+                    case erlang:process_info(Pid, initial_call) of
+                        {_, Call} ->
+                            {Mod, F, N} = proplists:get_value('$initial_call', D, Call),
+                            erlang:iolist_to_binary(
+                                io_lib:format("~p:~p/~p", [Mod, F, N]));
+                        undefined ->
+                            undefined
+                    end;
+                undefined ->
+                    undefined
+            end
     end.
