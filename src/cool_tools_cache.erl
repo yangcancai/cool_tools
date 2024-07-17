@@ -112,7 +112,7 @@ handle_cast({set, Key, Value, TTL}, State = #cool_tools_cache_state{ttl_trees = 
     Now = erlang:system_time(1000),
     true = ets:insert(?MODULE, {Key, Value}),
     {noreply,
-     State#cool_tools_cache_state{ttl_trees = gb_trees:insert({Now + TTL, Key}, 1, Trees)}};
+     State#cool_tools_cache_state{ttl_trees = gb_trees:enter({Now + TTL, Key}, 1, Trees)}};
 handle_cast(_Request, State = #cool_tools_cache_state{}) ->
     {noreply, State}.
 
