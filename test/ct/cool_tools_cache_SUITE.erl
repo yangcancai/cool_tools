@@ -31,7 +31,7 @@
 -compile(export_all).
 
 all() ->
-    [set_and_get].
+    [set_and_get, del].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(cool_tools),
@@ -82,5 +82,24 @@ set_and_get(_) ->
     ok = cool_tools_cache:set(key1, <<"hello3">>, 10000),
     ?assertEqual([{key1, <<"hello3">>}], cool_tools_cache:get(key1)),
     cool_tools_cache:clear(),
+    ?assertEqual([], cool_tools_cache:get(key1)),
+    ok.
+
+del(_) ->
+    ?assertEqual([], cool_tools_cache:get(key1)),
+    ok = cool_tools_cache:set(key1, <<"hello3">>, 10000),
+    ?assertEqual([{key1, <<"hello3">>}], cool_tools_cache:get(key1)),
+    ok = cool_tools_cache:set(key1, <<"hello4">>, 1000),
+    ?assertEqual([{key1, <<"hello4">>}], cool_tools_cache:get(key1)),
+    timer:sleep(2000),
+    ?assertEqual([], cool_tools_cache:get(key1)),
+    ok = cool_tools_cache:set(key1, <<"hello3">>, 500),
+    ?assertEqual([{key1, <<"hello3">>}], cool_tools_cache:get(key1)),
+    ok = cool_tools_cache:set(key1, <<"hello4">>, 10000),
+    ?assertEqual([{key1, <<"hello4">>}], cool_tools_cache:get(key1)),
+    timer:sleep(2000),
+    ?assertEqual([{key1, <<"hello4">>}], cool_tools_cache:get(key1)),
+    ok = cool_tools_cache:set(key1, <<"hello4">>, 1000),
+    cool_tools_cache:del(key1),
     ?assertEqual([], cool_tools_cache:get(key1)),
     ok.

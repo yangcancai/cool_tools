@@ -23,7 +23,8 @@
 
 -record(cool_tools_cache_state, {ttl_trees = gb_trees:empty()}).
 
--export([async_set/2, async_set/3, set/2, set/3, get/1, manual_check_ttl/0, clear/0]).
+-export([async_set/2, async_set/3, set/2, set/3, get/1, manual_check_ttl/0, clear/0,
+         del/1, async_del/1]).
 
 %%%===================================================================
 %%% API
@@ -41,9 +42,22 @@ set(Key, Value, TTL) ->
     gen_server:call(?MODULE, {set, Key, Value, TTL}).
 
 get(Keys) when is_list(Keys) ->
-    [ets:lookup(?MODULE, Key) || Key <- Keys];
+    [?MODULE:get(Key) || Key <- Keys];
 get(Key) ->
-    ets:lookup(?MODULE, Key).
+    case ets:lookup(?Cache, Key) of
+        [] ->
+            [];
+        [{K, {ttl, Value, _Ex}}] ->
+            [{K, Value}];
+        Other ->
+            Other
+    end.
+
+async_del(Key) ->
+    gen_server:cast(?MODULE, {del, Key}).
+
+del(Key) ->
+    gen_server:call(?MODULE, {del, Key}).
 
 manual_check_ttl() ->
     gen_server:call(?MODULE, manual_check_ttl).
@@ -106,15 +120,32 @@ handle_call(Call, _From, State = #cool_tools_cache_state{}) ->
                      {noreply, NewState :: #cool_tools_cache_state{}, timeout() | hibernate} |
                      {stop, Reason :: term(), NewState :: #cool_tools_cache_state{}}.
 handle_cast({set, Key, Value}, State = #cool_tools_cache_state{}) ->
-    true = ets:insert(?MODULE, {Key, Value}),
+    true = ets:insert(?Cache, {Key, Value}),
     {noreply, State};
 handle_cast({set, Key, Value, TTL}, State = #cool_tools_cache_state{ttl_trees = Trees}) ->
     Now = erlang:system_time(1000),
-    true = ets:insert(?MODULE, {Key, Value}),
-    {noreply,
-     State#cool_tools_cache_state{ttl_trees = gb_trees:enter({Now + TTL, Key}, 1, Trees)}};
-handle_cast(_Request, State = #cool_tools_cache_state{}) ->
-    {noreply, State}.
+    Ex = Now + TTL,
+    Trees1 =
+        case ets:lookup(?Cache, Key) of
+            [{_, {ttl, _Old, OldEx}}] ->
+                gb_trees:delete({OldEx, Key}, Trees);
+            _ ->
+                Trees
+        end,
+    true = ets:insert(?Cache, {Key, {ttl, Value, Ex}}),
+    {noreply, State#cool_tools_cache_state{ttl_trees = gb_trees:enter({Ex, Key}, 1, Trees1)}};
+handle_cast({del, Key}, #cool_tools_cache_state{ttl_trees = Trees} = State) ->
+    case ets:lookup(?Cache, Key) of
+        [{_, {ttl, _Old, OldEx}}] ->
+            true = ets:delete(?Cache, Key),
+            {noreply,
+             State#cool_tools_cache_state{ttl_trees = gb_trees:delete({OldEx, Key}, Trees)}};
+        [{Key, _}] ->
+            true = ets:delete(?Cache, Key),
+            {noreply, State};
+        [] ->
+            {noreply, State}
+    end.
 
 %% @private
 %% @doc Handling all non call/cast messages
