@@ -39,8 +39,8 @@
 
 -define(DEFAULT_CREDIT, get_default_credit()).
 
--export([send/1, send/2, ack/1, ack/2, handle_bump_msg/1, blocked/0, state/0, state_delayed/1, setup/2]).
--export([peer_down/1]).
+-export([send/1, send/2, ack/1, ack/2, ack1/2, ack1/3, handle_bump_msg/1, blocked/0, state/0, state_delayed/1, setup/2]).
+-export([peer_down/1, get_default_credit/0]).
 -export([block/1, unblock/1]).
 
 %%----------------------------------------------------------------------------
@@ -119,6 +119,14 @@ ack(To, {_InitialCredit, MoreCreditAfter}) ->
                true   -> C - 1
             end).
 
+ack1(To, CallBack) -> ack1(To, CallBack, ?DEFAULT_CREDIT).
+ack1(To, CallBack, {_InitialCredit, MoreCreditAfter}) ->
+  ?UPDATE({credit_to, To}, MoreCreditAfter, C,
+    if C == 1 -> grant1(To, MoreCreditAfter, CallBack),
+      MoreCreditAfter;
+      true   -> C - 1
+    end).
+
 handle_bump_msg({From, MoreCredit}) ->
     ?UPDATE({credit_from, From}, 0, C,
             if C =< 0 andalso C + MoreCredit > 0 -> unblock(From),
@@ -162,6 +170,12 @@ peer_down(Peer) ->
     ok.
 
 %% --------------------------------------------------------------------------
+grant1(To, Quantity, CallBack) ->
+  Msg = {bump_credit, {self(), Quantity}},
+  case blocked() of
+    false -> CallBack(To, Msg);
+    true  -> ?UPDATE(credit_deferred, [], Deferred, [{To, Msg} | Deferred])
+  end.
 
 grant(To, Quantity) ->
     Msg = {bump_credit, {self(), Quantity}},
